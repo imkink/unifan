@@ -187,13 +187,26 @@ class EthernetTests(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(await self.driver.wait_ready(0.005))
 
     async def test_bootstrap_confirms_without_waiting_for_cable(self):
+        class FakeMicrodot:
+            def get(self, path):
+                return lambda handler: handler
+
+            async def start_server(self, **kwargs):
+                # Mirror Microdot: the server attribute appears only after the
+                # listening socket has been created successfully.
+                self.server = object()
+                while True:
+                    await asyncio.sleep(1)
+
         spec = importlib.util.spec_from_file_location("wired_bootstrap", ROOT / "firmware/app_a/app.py")
         app = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(app)
         boot = Mock(version="0.0.0")
-        with patch.object(app, "W5500Ethernet", return_value=self.driver):
+        microdot = SimpleNamespace(Microdot=FakeMicrodot)
+        with patch.object(app, "W5500Ethernet", return_value=self.driver), \
+            patch.dict(sys.modules, {"microdot": microdot}):
             task = asyncio.create_task(app.main(boot))
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.15)
             boot.confirm_boot.assert_called_once()
             boot.feed_watchdog.assert_called_once()
             self.assertFalse(self.driver.is_ready())

@@ -3,16 +3,20 @@
 Rack Fan Module & Control System — StampS3 / official MicroPython.
 
 当前实现：GitHub Releases 文件级 OTA、A/B 业务目录、启动确认与失败回退，
-W5500 有线以太网管理，以及待接入的 Microdot 2.x OTA 路由。
+W5500 有线以太网管理、Microdot 只读管理页，以及待接入的鉴权 OTA 路由。
 设备只通过 W5500 接入局域网和互联网，不使用 Wi-Fi。温湿度与风扇已有可运行的
-模拟接口，真实驱动和控制算法保留伪代码，管理网页尚未实现。
+模拟接口，真实驱动和控制算法保留伪代码。管理页显示温湿度、6 路风扇、网络和
+系统状态；设置按钮在控制策略和持久化方案完成前保持禁用。
+页面支持简体中文和英文，首次访问默认英文，可在页脚中间切换，并在本机保存用户选择。
 
 ```text
 firmware/                 上传到设备文件系统根目录的内容
   main.py                 固定启动入口
   network_config.py       固定 W5500 管脚和 IP 配置（逐项中文说明）
   lib/unifan_ota/          固定 OTA 运行库
-  app_a/                  业务目录（有线网络、模拟硬件与采样骨架）
+  app_a/                  业务目录（有线网络、模拟硬件、采样与 Web 服务）
+    webapp.py             只读 Dashboard 路由与 `/api/status`
+    static/               无框架、无 CDN 的 HTML/CSS/JS 与本地字体
   certs/                  GitHub TLS 根证书，由准备工具生成
 tools/build_release.py    在电脑上生成发布附件
 tools/prepare_ca.py       从电脑信任库导出 GitHub 所需根证书
@@ -29,6 +33,16 @@ docs/simulation.md       电路板完成前的模拟接口与真实驱动替换�
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+在电脑上预览 Dashboard（使用固定模拟数据，不连接设备）：
+
+```sh
+python3 tools/preview_dashboard.py
+```
+
+打开 `http://127.0.0.1:8765/`；响应式检查页为 `/_preview/mobile`（402px）和
+`/_preview/narrow`（300px）。设备运行时访问其局域网 IP，页面每 2 秒读取一次
+`GET /api/status`，不会写配置或触发风扇控制。
 
 首次部署先看 [W5500 有线联网](docs/ethernet.md) 和 [OTA 使用说明](docs/ota.md)。
 底层 W5500 驱动由官方固件的 `network.LAN` 提供，初始化和后台管理使用 MicroPython。

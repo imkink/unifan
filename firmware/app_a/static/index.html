@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c234f">
+  <title>UniFan Dashboard</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <strong>UniFan</strong>
+        <span data-i18n="brand.subtitle">Rack Fan Control System</span>
+      </div>
+      <div class="header-actions">
+        <button class="settings-button" type="button" disabled
+                data-i18n="action.settings" data-i18n-title="action.settingsUnavailable"
+                title="Control settings are not available yet">Settings</button>
+      </div>
+    </header>
+
+    <main class="dashboard" aria-live="polite">
+      <section class="card temperature-card" aria-labelledby="temperature-title">
+        <h2 id="temperature-title" data-i18n="section.temperature">Temperature</h2>
+        <div class="environment-values">
+          <p class="primary-reading"><span id="temperature">--</span><small>°C</small></p>
+          <p class="secondary-reading"><span data-i18n="field.humidity">Humidity</span>
+            <strong id="humidity">--</strong><small>%</small></p>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="fan-title">
+        <div class="card-heading">
+          <h2 id="fan-title" data-i18n="section.fan">Fan</h2>
+          <span id="fan-summary" class="status-label" data-i18n="status.waiting">Waiting</span>
+        </div>
+        <div id="fan-grid" class="fan-grid"></div>
+      </section>
+
+      <div class="details-grid">
+        <section class="card" aria-labelledby="network-title">
+          <div class="card-heading">
+            <h2 id="network-title" data-i18n="section.network">Network</h2>
+            <span id="network-state" class="status-label" data-i18n="status.waiting">Waiting</span>
+          </div>
+          <dl class="data-list">
+            <div><dt data-i18n="field.ipAddress">IP Address</dt><dd id="network-ip">--</dd></div>
+            <div><dt data-i18n="field.gateway">Gateway</dt><dd id="network-gateway">--</dd></div>
+            <div><dt>DNS</dt><dd id="network-dns">--</dd></div>
+            <div><dt data-i18n="field.interface">Interface</dt><dd id="network-interface">W5500</dd></div>
+          </dl>
+        </section>
+
+        <section class="card" aria-labelledby="system-title">
+          <div class="card-heading">
+            <h2 id="system-title" data-i18n="section.system">System</h2>
+            <span id="system-state" class="status-label" data-i18n="status.waiting">Waiting</span>
+          </div>
+          <dl class="data-list">
+            <div><dt data-i18n="field.serialNumber">Serial Number</dt><dd id="device-id">--</dd></div>
+            <div><dt data-i18n="field.version">Version</dt><dd id="version">--</dd></div>
+            <div><dt data-i18n="field.dataSource">Data Source</dt><dd id="data-source">--</dd></div>
+            <div><dt data-i18n="field.sample">Sample</dt><dd id="sequence">--</dd></div>
+          </dl>
+        </section>
+      </div>
+
+      <p id="connection-message" class="connection-message" role="status"
+         data-i18n="connection.connecting">Connecting to UniFan…</p>
+    </main>
+
+    <footer class="app-footer">
+      <span>© 2026 UniFan</span>
+      <div class="footer-language">
+        <label class="sr-only" for="language-selector" data-i18n="language.label">Language</label>
+        <select id="language-selector" class="language-selector">
+          <option value="en">EN</option>
+          <option value="zh-CN">中文</option>
+        </select>
+      </div>
+      <span><span data-i18n="footer.sourceCode">Source Code</span> · GPL-3.0</span>
+    </footer>
+  </div>
+</body>
+</html>
