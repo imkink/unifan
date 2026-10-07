@@ -1,0 +1,17 @@
+@font-face {
+  font-family: "Rajdhani";
+  src: url("./Rajdhani-SemiBold-ascii-units.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-007F, U+00A0, U+00B0-00B1, U+00B7, U+00D7, U+00F7, U+03A9, U+2030, U+2126, U+2206, U+2212, U+2264-2265;
+}
+
+@font-face {
+  font-family: "Rajdhani";
+  src: url("./Rajdhani-Bold-ascii-units.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-007F, U+00A0, U+00B0-00B1, U+00B7, U+00D7, U+00F7, U+03A9, U+2030, U+2126, U+2206, U+2212, U+2264-2265;
+}

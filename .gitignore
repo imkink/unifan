@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+dist/
+firmware/certs/*.pem
+firmware/device_config.py
+.venv/
+# 设备烧录前备份可能含原有配置或凭据，只保留在本机。
+backups/
+# 本机环境变量与凭据文件；示例文件可提交。
+.env
+.env.*
+!.env.example
+# 可由字体资源目录重新生成的重复压缩包。
+resources/fonts/rajdhani-webfont.zip
