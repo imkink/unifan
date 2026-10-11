@@ -74,6 +74,37 @@ class TelemetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.service.healthy())
         self.assertEqual(self.service.snapshot()["sequence"], 2)
 
+    async def test_minute_sampling_remains_healthy_until_stale_deadline(self):
+        await self.service.initialize()
+        sampled_at = self.tick
+        # Normal sampling waits outlive the independent 30-second watchdog.
+        for age_ms in (30000, 60000, 89999):
+            self.tick = sampled_at + age_ms
+            self.assertTrue(self.service.healthy())
+            self.assertFalse(self.service.snapshot()["stale"])
+        self.tick = sampled_at + 90000
+        self.assertFalse(self.service.healthy())
+        self.assertTrue(self.service.snapshot()["stale"])
+
+    async def test_default_sampling_waits_one_minute_between_snapshots(self):
+        await self.service.initialize()
+        delays = []
+
+        async def advance_time(seconds):
+            delays.append(seconds)
+            if len(delays) == 2:
+                raise asyncio.CancelledError()
+            self.tick += int(seconds * 1000)
+            self.assertEqual(self.service.snapshot()["sequence"], 1)
+            self.assertTrue(self.service.healthy())
+
+        with patch.object(telemetry_module.asyncio, "sleep", advance_time):
+            with self.assertRaises(asyncio.CancelledError):
+                await self.service.run()
+        self.assertEqual(delays, [60, 60])
+        self.assertEqual(self.service.snapshot()["sequence"], 2)
+        self.assertTrue(self.service.healthy())
+
     async def test_failed_read_does_not_publish_partial_snapshot(self):
         await self.service.initialize()
         self.sensor.set_environment(40, 50)

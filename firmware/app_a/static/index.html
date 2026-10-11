@@ -16,9 +16,8 @@
         <span data-i18n="brand.subtitle">Rack Fan Control System</span>
       </div>
       <div class="header-actions">
-        <button class="settings-button" type="button" disabled
-                data-i18n="action.settings" data-i18n-title="action.settingsUnavailable"
-                title="Control settings are not available yet">Settings</button>
+        <button id="settings-open" class="settings-button" type="button"
+                data-i18n="action.settings" title="MQTT">Settings</button>
       </div>
     </header>
 
@@ -64,6 +63,7 @@
             <div><dt data-i18n="field.version">Version</dt><dd id="version">--</dd></div>
             <div><dt data-i18n="field.dataSource">Data Source</dt><dd id="data-source">--</dd></div>
             <div><dt data-i18n="field.sample">Sample</dt><dd id="sequence">--</dd></div>
+            <div><dt>MQTT</dt><dd id="mqtt-phase">--</dd></div>
           </dl>
         </section>
       </div>
@@ -84,5 +84,26 @@
       <span><span data-i18n="footer.sourceCode">Source Code</span> · GPL-3.0</span>
     </footer>
   </div>
+  <dialog id="mqtt-dialog">
+    <form id="mqtt-form">
+      <h2>MQTT · HTTPS</h2>
+      <p>Read / Admin Token · 凭据只保留在当前弹窗内，不存入浏览器。</p>
+      <label>Token <input id="mqtt-token" type="password" autocomplete="off" maxlength="64"></label>
+      <button id="mqtt-load" type="button">Load / 读取</button>
+      <fieldset id="mqtt-fields" disabled>
+        <label><input id="mqtt-enabled" type="checkbox"> Enabled / 启用</label>
+        <label>Broker IPv4 <input id="mqtt-host" maxlength="15"></label>
+        <label>Port <input id="mqtt-port" type="number" min="1" max="65535" value="8883"></label>
+        <label>TLS Server Name <input id="mqtt-server-name" maxlength="128" placeholder="默认验证 Broker IP"></label>
+        <label>Username <input id="mqtt-username" maxlength="64" autocomplete="off"></label>
+        <label>New Password <input id="mqtt-password" type="password" autocomplete="new-password" placeholder="空白保留原密码"></label>
+        <label><input id="mqtt-clear-password" type="checkbox"> Clear password / 清除密码</label>
+        <p>TLS required · Publish 600s · 只发布，无控制订阅</p>
+        <button id="mqtt-save" type="submit">Save / 保存</button>
+      </fieldset>
+      <p id="mqtt-result" role="status"></p>
+      <button id="mqtt-close" type="button">Close / 关闭</button>
+    </form>
+  </dialog>
 </body>
 </html>

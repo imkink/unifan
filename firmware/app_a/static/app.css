@@ -35,6 +35,14 @@
 
 * { box-sizing: border-box; }
 
+dialog { background: var(--background-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 8px; max-width: 440px; width: calc(100% - 32px); }
+dialog::backdrop { background: #0009; }
+dialog label { display: block; margin: 12px 0; }
+dialog input:not([type="checkbox"]) { display: block; width: 100%; padding: 8px; margin-top: 4px; }
+dialog button { padding: 8px 16px; margin: 4px; cursor: pointer; }
+dialog p { font-size: 14px; overflow-wrap: anywhere; }
+dialog fieldset { margin-top: 12px; border: 1px solid var(--border-card); }
+
 html {
   min-width: 280px;
   min-height: 100%;

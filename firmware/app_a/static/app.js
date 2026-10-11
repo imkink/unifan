@@ -1,6 +1,7 @@
 "use strict";
 
-const POLL_INTERVAL_MS = 2000;
+// 单连接 HTTPS：上一请求结束后才计时，不允许 setInterval 堆积重叠轮询。
+const POLL_INTERVAL_MS = 5000;
 const LANGUAGE_STORAGE_KEY = "unifan.language";
 
 const messages = {
@@ -152,6 +153,7 @@ function show(value, fallback = "--") {
 }
 
 function number(value, digits = 0) {
+  if (value === null || value === undefined) return "--";
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed.toFixed(digits) : "--";
 }
@@ -205,6 +207,7 @@ function render(payload) {
   elements.version.textContent = show(system.version);
   elements.dataSource.textContent = translatedValue("source", system.source);
   elements.sequence.textContent = show(system.sequence);
+  document.querySelector("#mqtt-phase").textContent = show(payload.mqtt?.phase);
   const warning = system.stale || !system.hardware_ready;
   setStatus(elements.systemState,
             t(system.stale ? "status.stale" : (system.simulated ? "status.simulation" : "status.ready")),
@@ -218,7 +221,7 @@ function render(payload) {
 
 async function refresh() {
   try {
-    const response = await fetch("/api/status", { cache: "no-store" });
+    const response = await serialFetch("/api/status", { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     lastPayload = await response.json();
     render(lastPayload);
@@ -242,5 +245,84 @@ elements.languageSelector.addEventListener("change", () => {
 });
 
 applyTranslations();
-refresh();
-setInterval(refresh, POLL_INTERVAL_MS);
+
+// 页面内所有 HTTP 访问共享一个队列；失败 GET 可重试，配置写入不能盲目自动重发。
+let requestQueue = Promise.resolve();
+function serialFetch(path, options = {}) {
+  const run = async () => {
+    // 响应正文读取结束略早于设备完成 socket 释放，为唯一连接留出关闭间隔。
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(path, { ...options, signal: controller.signal });
+      const body = await response.text();
+      return { ok: response.ok, status: response.status, headers: response.headers,
+               json: async () => JSON.parse(body) };
+    } finally { clearTimeout(timer); }
+  };
+  const result = requestQueue.then(run, run);
+  requestQueue = result.catch(() => {});
+  return result;
+}
+
+const mqttDialog = document.querySelector("#mqtt-dialog");
+const mq = (name) => document.querySelector(`#mqtt-${name}`);
+let mqttEtag = null;
+let settingBusy = false;
+mq("close").onclick = () => mqttDialog.close();
+document.querySelector("#settings-open").onclick = () => mqttDialog.showModal();
+mqttDialog.addEventListener("close", () => {
+  mq("token").value = mq("password").value = "";
+  mq("fields").disabled = true;
+  mqttEtag = null;
+});
+
+async function mqttRequest(save) {
+  if (settingBusy) return;
+  settingBusy = true;
+  mq("load").disabled = mq("save").disabled = true;
+  mq("result").textContent = "Working / 处理中…";
+  try {
+    const headers = { Authorization: `Bearer ${mq("token").value.trim()}` };
+    const options = { headers, cache: "no-store" };
+    if (save) {
+      if (!mqttEtag) throw new Error("Load first / 请先读取配置");
+      options.method = "PATCH";
+      headers["If-Match"] = mqttEtag;
+      headers["Content-Type"] = "application/json";
+      const body = { enabled: mq("enabled").checked, host: mq("host").value.trim(),
+                     port: Number(mq("port").value), tls: true,
+                     server_name: mq("server-name").value.trim(), username: mq("username").value.trim() };
+      if (mq("clear-password").checked) body.password = null;
+      else if (mq("password").value) body.password = mq("password").value;
+      options.body = JSON.stringify(body);
+    }
+    const response = await serialFetch("/api/v1/settings/mqtt", options);
+    const payload = await response.json();
+    if (!response.ok) throw new Error(`${response.status} ${payload.error?.code || "request_failed"}`);
+    // 弹窗关闭时不把在途请求的结果重新写入已清空的凭据界面。
+    if (!mqttDialog.open) return;
+    mqttEtag = response.headers.get("ETag");
+    const value = payload.data;
+    mq("enabled").checked = value.enabled;
+    for (const [name, key] of [["host", "host"], ["port", "port"], ["username", "username"], ["server-name", "server_name"]]) mq(name).value = value[key];
+    mq("password").value = "";
+    mq("clear-password").checked = false;
+    mq("fields").disabled = false;
+    mq("result").textContent = save ? "Saved; applying asynchronously / 已保存，连接状态请看面板" : `Loaded / 已读取 · Password configured: ${value.password_configured}`;
+  } catch (error) {
+    mq("result").textContent = `${error.message} · 写入结果不确定时请重新读取；勿反复提交。`;
+  } finally {
+    settingBusy = false;
+    mq("load").disabled = mq("save").disabled = false;
+  }
+}
+mq("load").onclick = () => mqttRequest(false);
+mq("form").onsubmit = (event) => { event.preventDefault(); mqttRequest(true); };
+
+async function poll() {
+  if (!mqttDialog.open) await refresh();
+  setTimeout(poll, POLL_INTERVAL_MS);
+}
+poll();

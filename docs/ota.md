@@ -12,7 +12,8 @@ https://github.com/imkink/unifan/releases/latest/download/manifest.json
 `network.hostname`、DHCP 模式下的 `LAN.ipconfig`，以及 `asyncio`、`esp32.NVS`、`machine.WDT`、
 `ssl.SSLContext`、`CERT_REQUIRED`、`load_verify_locations(cafile=...)`、
 `asyncio.open_connection(..., ssl=context, server_hostname=host)`。
-建议使用近期稳定版；目前尚未对用户设备的具体版本做实机验证。
+当前实机使用 MicroPython 1.29.0，已验证 W5500、HTTPS 与 MQTT TLS；
+这不代表完整 GitHub OTA 安装/断电回退已通过实机验收。
 HTTPS 不支持或证书不匹配时会报错，不会降低验证强度。
 
 先通过串口确认 `sys.implementation`、`os.uname()`、`os.statvfs('/')`。
@@ -27,12 +28,14 @@ HTTPS 不支持或证书不匹配时会报错，不会降低验证强度。
 /lib/unifan_ota/            固定 OTA 库
 /lib/microdot.py            后续安装的固定 Microdot 依赖
 /certs/github-roots.pem     固定信任根
+/security/                 设备 HTTPS 身份、管理令牌和 MQTT CA（不进入业务发布包）
 /app_a/app.py               async def main(boot)
 /app_a/ethernet.py          MicroPython 有线网络管理，随业务版本升级
 /app_a/static/              与业务版本配套的网页
 /app_b/                    下一版本（自动创建）
 /data/                     历史数据（OTA 不操作）
 NVS namespace unifan_ota    单个 state blob：已确认版本、候选版本、启动次数
+NVS namespace unifan_mqtt   MQTT 用户配置，独立于 A/B 业务目录
 ```
 
 OTA 仅能清理和写入非活动 app 目录。配置和历史数据应放在独立 NVS 命名空间或 `/data`，
@@ -59,6 +62,16 @@ OTA 仅能清理和写入非活动 app 目录。配置和历史数据应放在�
 它在本地初始化成功后确认启动，不等待网线和 DHCP；这不能替代实际温控健康检查。
 
 ## 业务接入
+
+### 计划中的维护模式
+
+OTA 检查/安装前暂停采样、MQTT、普通 REST 和历史写入，风扇保持经验证的维护安全输出。
+保留 W5500、最小 HTTP 维护页面、鉴权 OTA 进度/重启入口和看门狗监督。
+结束或失败后恢复业务，安装成功但等待手动重启时也恢复，避免无限期停止采样。
+计划内停采样需要独立的维护健康判定，不能沿用“90 秒未采样即重启”。
+详细生命周期、失败处理及接入约束见 [OTA 维护模式方案](ota-maintenance.md)；该模式尚未实现。
+
+### 当前接入方式
 
 业务入口必须是 `async def main(boot)` 并持续运行。建立传感器、风扇与必要任务后，
 通过本地自检再调用 `boot.confirm_boot()`。由健康监督任务在所有关键任务运行正常时
@@ -92,7 +105,7 @@ if result['available']:
 TLS 和 JSON 解析仍会占用额外内存，首次实机运行需要测量 `gc.mem_free()`。
 下载不能并发；失败后重新完整下载，不做断点续传。DNS 解析在 MicroPython 中仍可能
 阻塞，TLS 和 Flash 操作也不保证硬实时。风扇必须有合适的硬件/控制安全默认值，
-并在实机上确认 OTA 与控制任务同时运行时的最大延迟。
+并在实机上确认维护安全输出、OTA 期间的监督延迟以及业务恢复行为；当前代码尚未接入维护模式。
 
 ## Microdot 2.x 接入接口
 

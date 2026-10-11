@@ -55,7 +55,7 @@ def _read_asset(static_dir, name):
 
 
 def register_routes(app, telemetry, ethernet, boot, static_dir=STATIC_DIR,
-                    device_id=None):
+                    device_id=None, secure=False, mqtt=None):
     """Register the read-only dashboard; control and OTA remain separate."""
     if device_id is None:
         device_id = _device_id()
@@ -70,14 +70,22 @@ def register_routes(app, telemetry, ethernet, boot, static_dir=STATIC_DIR,
 
     @app.get("/")
     async def index(request):
+        if secure:
+            # 正式 HTTPS 使用单文件页面，避免浏览器并行请求 CSS/JS/字体占满唯一连接。
+            from microdot import Response
+            response = Response.send_file(static_dir + "/dashboard.html", content_type="text/html; charset=utf-8")
+            response.headers["Cache-Control"] = "no-store"
+            return response
         return (_read_asset(static_dir, "index.html"), 200,
                 {"Content-Type": "text/html; charset=utf-8",
                  "Cache-Control": "no-store"})
 
     @app.get("/api/status")
     async def status(request):
-        return (build_status_payload(telemetry, ethernet, boot.version, device_id),
-                200, {"Cache-Control": "no-store"})
+        value = build_status_payload(telemetry, ethernet, boot.version, device_id)
+        if mqtt is not None:
+            value["mqtt"] = mqtt.status()
+        return value, 200, {"Cache-Control": "no-store"}
 
     # Keep the catch-all route last so API paths always win on constrained routers.
     @app.get("/<path:path>")
@@ -85,6 +93,13 @@ def register_routes(app, telemetry, ethernet, boot, static_dir=STATIC_DIR,
         content_type = asset_types.get(path)
         if content_type is None:
             return {"error": "Not found"}, 404
+        if secure:
+            # 旧资源路径仍可访问，但采用固定白名单和流式发送；不允许任意文件读取。
+            from microdot import Response
+            try:
+                return Response.send_file(static_dir + "/" + path, content_type=content_type, max_age=3600)
+            except OSError:
+                return {"error": "Not found"}, 404
         try:
             body = _read_asset(static_dir, path)
         except OSError:

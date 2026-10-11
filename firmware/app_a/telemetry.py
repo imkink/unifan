@@ -44,6 +44,10 @@ class TelemetryService:
         return (self._last_sample is not None
                 and 0 <= time.ticks_diff(time.ticks_ms(), self._last_sample) < self.settings.SAMPLE_STALE_MS)
 
+    def sample_age_ms(self):
+        """所有出口使用同一份单调样本年龄，查询不会触发新一轮采样。"""
+        return None if self._last_sample is None else max(0, time.ticks_diff(time.ticks_ms(), self._last_sample))
+
     def snapshot(self):
         if self._snapshot is None:
             return {"source": "uninitialized", "hardware_ready": False, "control_policy_ready": False}
